@@ -11,6 +11,8 @@ import {
   Code2,
   Briefcase,
   Brain,
+  LucideIcon,
+  Settings
 } from 'lucide-react';
 import { AppSidebar } from '@/layouts/AppSidebar';
 import {
@@ -21,12 +23,19 @@ import {
 } from '@/components/ui/breadcrumb';
 import { useLocation } from 'react-router-dom';
 
-const menuItems = [
+interface MenuItem {
+  text: string;
+  icon: LucideIcon;
+  path: string;
+}
+
+const menuItems: MenuItem[] = [
   { text: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { text: 'Products', icon: Package, path: '/products' },
   { text: 'Crawler Raw', icon: Code2, path: '/crawler-raw' },
   { text: 'Jobs', icon: Briefcase, path: '/jobs' },
   { text: 'AI', icon: Brain, path: '/ai' },
+  { text: 'Registry', icon: Settings, path: '/registry' }
 ];
 
 interface MainLayoutProps {
@@ -64,7 +73,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ darkMode, toggleTheme }) => {
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink href={location.pathname}>
-                    {menuItems.find(item => item.path === location.pathname)?.text || 'Current Page'}
+                    {menuItems.find((item: MenuItem) => item.path === location.pathname)?.text || 'Current Page'}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
               </BreadcrumbList>

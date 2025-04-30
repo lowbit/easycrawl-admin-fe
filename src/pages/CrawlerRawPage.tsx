@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CrawlerRawDTO, CrawlerRawFilter, crawlerRawService } from '@/services/crawlerRawService';
-import { DropdownDTO, crawlerConfigService } from '@/services/crawlerConfigService';
+import { crawlerConfigService } from '@/services/crawlerConfigService';
+import { DropdownDTO, registryService } from '@/services/registryService';
 import { format } from 'date-fns';
 import { RotateCw, Settings2 } from "lucide-react";
 
@@ -64,7 +65,7 @@ export default function CrawlerRawPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const websitesData = await crawlerConfigService.getWebsitesDropdown();
+      const websitesData = await registryService.getWebsitesDropdown();
       setWebsites(websitesData);
     } catch (error) {
       console.error('Error fetching websites:', error);
@@ -80,7 +81,7 @@ export default function CrawlerRawPage() {
     try {
       const configCodesData = await crawlerConfigService.getCrawlerConfigsDropdown(websiteCode);
       // Convert the response to array of strings
-      const codes = configCodesData.map(item => item.code);
+      const codes = configCodesData.map((item: DropdownDTO) => item.code);
       setConfigCodes(codes);
       
       // If there's only one config code, auto-select it
@@ -196,7 +197,7 @@ export default function CrawlerRawPage() {
       );
     }
 
-    return data.content.map((item) => (
+    return data.content.map((item: CrawlerRawDTO) => (
       <TableRow key={item.id}>
         {columnVisibility.id && (
           <TableCell>{item.id}</TableCell>

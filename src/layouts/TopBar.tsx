@@ -16,11 +16,16 @@ interface TopBarProps {
   onToggleTheme: () => void;
 }
 
+interface BreadcrumbItem {
+  text: string;
+  path: string;
+}
+
 export const TopBar: React.FC<TopBarProps> = ({ darkMode, onToggleTheme }) => {
   const location = useLocation();
 
   // Convert path segments to breadcrumb items
-  const getBreadcrumbs = (path: string) => {
+  const getBreadcrumbs = (path: string): BreadcrumbItem[] => {
     const segments = path.split('/').filter(Boolean);
     if (segments.length === 0) return [{ text: 'Dashboard', path: '/' }];
 
@@ -43,7 +48,7 @@ export const TopBar: React.FC<TopBarProps> = ({ darkMode, onToggleTheme }) => {
           <BreadcrumbItem>
             <BreadcrumbLink href="/">Home</BreadcrumbLink>
           </BreadcrumbItem>
-          {breadcrumbs.map((item, index) => (
+          {breadcrumbs.map((item: BreadcrumbItem, index: number) => (
             <React.Fragment key={item.path}>
               <BreadcrumbSeparator />
               <BreadcrumbItem>

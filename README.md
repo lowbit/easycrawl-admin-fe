@@ -52,3 +52,91 @@ export default tseslint.config({
   },
 })
 ```
+
+## Dashboard Implementation
+
+The dashboard has been implemented with the following features:
+
+1. **Key Metrics**:
+   - Total Products
+   - Active Jobs
+   - Success Rate
+   - Error Rate
+
+2. **Charts**:
+   - Crawling Activity Trend (Area Chart)
+   - Job Status Distribution (Pie Chart)
+   - Website Activity (Bar Chart)
+   - Products by Category (Pie Chart)
+
+3. **Recent Jobs Table**:
+   - Displays the most recent job activities with status, duration, and processed items
+
+### Required Backend APIs
+
+The following APIs need to be implemented on the backend to support the dashboard:
+
+1. **Dashboard Stats API** - `GET /dashboard/stats`
+   ```json
+   {
+     "totalProducts": 256,
+     "newProductsThisMonth": 24,
+     "activeJobs": 5,
+     "activeJobsChange": 20,
+     "successRate": 94.5,
+     "successRateChange": 2.5,
+     "errorRate": 5.5,
+     "errorRateChange": -2.5
+   }
+   ```
+
+2. **Activity Data API** - `GET /dashboard/activity?days=30`
+   ```json
+   [
+     {
+       "date": "Jul 01",
+       "crawled": 45,
+       "processed": 38
+     },
+     {
+       "date": "Jul 02",
+       "crawled": 52,
+       "processed": 41
+     },
+     // ...more data points
+   ]
+   ```
+
+3. **Category Distribution API** - `GET /dashboard/category-distribution`
+   ```json
+   [
+     { "name": "Electronics", "value": 35 },
+     { "name": "Clothing", "value": 25 },
+     { "name": "Home & Garden", "value": 18 },
+     { "name": "Toys", "value": 12 },
+     { "name": "Sports", "value": 10 }
+   ]
+   ```
+
+4. **Website Activity API** - `GET /dashboard/website-activity`
+   ```json
+   [
+     { "name": "Amazon", "crawled": 120, "failed": 5 },
+     { "name": "eBay", "crawled": 98, "failed": 3 },
+     { "name": "Walmart", "crawled": 86, "failed": 7 },
+     { "name": "Target", "crawled": 65, "failed": 2 },
+     { "name": "BestBuy", "crawled": 55, "failed": 1 }
+   ]
+   ```
+
+5. **Job Status Distribution API** - `GET /dashboard/job-status-distribution`
+   ```json
+   [
+     { "name": "Completed", "value": 68 },
+     { "name": "In Progress", "value": 12 },
+     { "name": "Failed", "value": 8 },
+     { "name": "Scheduled", "value": 12 }
+   ]
+   ```
+
+The dashboard currently uses mock data provided by the `dashboardService.ts` file, which can be replaced with actual API calls once the backend endpoints are implemented.

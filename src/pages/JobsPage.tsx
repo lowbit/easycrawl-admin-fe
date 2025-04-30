@@ -16,13 +16,11 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem 
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal, ExternalLink, RotateCcw, RotateCw, AlertCircle, Clock, CheckCircle, Settings2, X } from 'lucide-react';
+import { ExternalLink, RotateCcw, RotateCw, AlertCircle, Clock, CheckCircle, Settings2, X } from 'lucide-react';
 import { jobService, JobDTO, JobErrorDTO, JobFilter } from '@/services/jobService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -33,7 +31,6 @@ export default function JobsPage() {
   const location = useLocation();
   const [jobs, setJobs] = useState<JobDTO[]>([]);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   
   // Filters and pagination
@@ -85,7 +82,6 @@ export default function JobsPage() {
       
       setJobs(response.content);
       setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast.error('Failed to load jobs');
@@ -117,10 +113,6 @@ export default function JobsPage() {
 
   const getSortDirection = (column: string) => {
     return filters.sort === column ? filters.direction : undefined;
-  };
-
-  const handleSearch = () => {
-    fetchJobs();
   };
   
   const clearFilters = () => {

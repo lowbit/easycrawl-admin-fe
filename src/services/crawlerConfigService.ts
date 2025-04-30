@@ -1,10 +1,5 @@
 import axios from 'axios';
 
-export interface DropdownDTO {
-  code: string;
-  name: string;
-}
-
 export interface CrawlerConfigDTO {
   code: string;
   crawlerWebsite: string;
@@ -39,17 +34,6 @@ export interface CrawlerConfigFilter {
   sort?: string[];
 }
 
-export interface WebsiteDTO {
-  code: string;
-  name: string;
-  url: string;
-}
-
-export interface CategoryDTO {
-  code: string;
-  name: string;
-}
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000';
 const BASE_URL = `${API_URL}/crawler-config`;
 
@@ -71,19 +55,9 @@ export const crawlerConfigService = {
     return response.data;
   },
 
-  getWebsitesDropdown: async () => {
-    const response = await axios.get(`${BASE_URL}/crawler-website-dropdown`);
-    return response.data as DropdownDTO[];
-  },
-
-  getCategoriesDropdown: async () => {
-    const response = await axios.get(`${BASE_URL}/product-category-dropdown`);
-    return response.data as DropdownDTO[];
-  },
-
   getCrawlerConfigsDropdown: async (websiteCode: string) => {
     const response = await axios.get(`${BASE_URL}/crawler-config-dropdown?websiteCode=${websiteCode}`);
-    return response.data as DropdownDTO[];
+    return response.data;
   },
 
   create: async (data: CrawlerConfigDTO) => {
@@ -102,15 +76,5 @@ export const crawlerConfigService = {
 
   deleteBulk: async (codes: string[]) => {
     await axios.delete(`${BASE_URL}/bulk`, { data: codes });
-  },
-
-  addWebsite: async (website: WebsiteDTO) => {
-    const response = await axios.post(`${BASE_URL}/crawler-website`, website);
-    return response.data;
-  },
-
-  addCategory: async (category: CategoryDTO) => {
-    const response = await axios.post(`${BASE_URL}/product-category`, category);
-    return response.data;
   }
 }; 

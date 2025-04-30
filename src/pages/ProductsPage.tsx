@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -29,34 +30,31 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
 import {
   getProductBrands,
   getProductCategories,
   getProducts,
+  mergeDuplicates,
   ProductCategoryDTO,
   ProductDTO,
   ProductSearchParams,
+  runProductCleanup,
   triggerProductCleanup,
   triggerProductProcessing,
-  runProductCleanup,
-  updateProductNames,
-  mergeDuplicates
+  updateProductNames
 } from '@/services/productService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Eye,
   GitMerge,
-  LayoutGrid,
   Loader2,
   Play,
-  RotateCcw,
   RotateCw,
   Settings2,
   Sparkles,
   Type
 } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -144,16 +142,6 @@ const ProductsPage = () => {
     setSearchParams(prev => ({
       ...prev,
       category: value === 'all' ? '' : value,
-      page: 0,
-    }));
-  };
-
-  const handleResetFilters = () => {
-    setSearchParams(prev => ({
-      ...prev,
-      name: '',
-      brand: '',
-      category: '',
       page: 0,
     }));
   };

@@ -57,20 +57,6 @@ interface RegistryFilter {
   size: number;
   sort?: string;
 }
-
-interface Page<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  sort?: {
-    sorted: boolean;
-    unsorted: boolean;
-    empty: boolean;
-  };
-}
-
 const RegistryPage = () => {
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});

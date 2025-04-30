@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CrawlerConfigDTO, DropdownDTO, crawlerConfigService } from '@/services/crawlerConfigService';
+import { CrawlerConfigDTO, crawlerConfigService } from '@/services/crawlerConfigService';
+import { DropdownDTO, registryService } from '@/services/registryService';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import {
@@ -88,8 +89,8 @@ export function CrawlerConfigDialog({
       const fetchDropdowns = async () => {
         try {
           const [websitesResponse, categoriesResponse] = await Promise.all([
-            crawlerConfigService.getWebsitesDropdown(),
-            crawlerConfigService.getCategoriesDropdown()
+            registryService.getWebsitesDropdown(),
+            registryService.getCategoriesDropdown()
           ]);
           
           if (websitesResponse) {
@@ -352,7 +353,7 @@ export function CrawlerConfigDialog({
     
     try {
       // Add the new website
-      const response = await crawlerConfigService.addWebsite(newWebsite);
+      const response = await registryService.addWebsite(newWebsite);
       
       // Close the dialog
       setShowAddWebsiteDialog(false);
@@ -393,7 +394,7 @@ export function CrawlerConfigDialog({
     
     try {
       // Add the new category
-      const response = await crawlerConfigService.addCategory(newCategory);
+      const response = await registryService.addCategory(newCategory);
       
       // Close the dialog
       setShowAddCategoryDialog(false);

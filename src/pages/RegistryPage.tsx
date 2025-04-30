@@ -24,14 +24,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  bulkExportProductRegistry,
   createProductRegistry,
   deleteProductRegistry,
   getProductRegistry,
   getProductRegistryTypes,
   ProductRegistryDTO,
   refreshProductRegistry,
-  updateProductRegistry,
-  bulkExportProductRegistry
+  updateProductRegistry
 } from '@/services/productService';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -44,10 +44,23 @@ import {
   RefreshCw,
   Save,
   Trash,
-  X
+  X,
+  Plus,
+  Trash2,
+  Search
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WebsiteDTO, DropdownDTO, registryService } from '@/services/registryService';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Add pagination related types
 interface RegistryFilter {
@@ -58,18 +71,153 @@ interface RegistryFilter {
   sort?: string;
 }
 
-interface Page<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  sort?: {
-    sorted: boolean;
-    unsorted: boolean;
-    empty: boolean;
-  };
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
 }
+
+interface WebsiteFormData {
+  code: string;
+  name: string;
+  url: string;
+}
+
+interface CategoryFormData {
+  code: string;
+  name: string;
+}
+
+const RegistryDialog = ({
+  open,
+  onOpenChange,
+  type,
+  onSave
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: 'website' | 'category';
+  onSave: (data: WebsiteDTO | DropdownDTO) => Promise<void>;
+}) => {
+  const [formData, setFormData] = useState<WebsiteFormData | CategoryFormData>({
+    code: '',
+    name: '',
+    ...(type === 'website' ? { url: '' } : {})
+  });
+
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        code: '',
+        name: '',
+        ...(type === 'website' ? { url: '' } : {})
+      });
+    }
+  }, [open, type]);
+
+  const handleInputChange = (field: string, value: string) => {
+    if (type === 'website') {
+      if (field === 'url' && value) {
+        try {
+          const urlObj = new URL(value);
+          const domain = urlObj.hostname;
+          const possibleCode = domain;
+          const possibleName = domain.split('.')[0];
+
+          setFormData(prev => ({
+            ...prev,
+            url: value,
+            code: possibleCode,
+            name: possibleName.charAt(0).toUpperCase() + possibleName.slice(1)
+          }));
+        } catch (error) {
+          setFormData(prev => ({ ...prev, url: value }));
+        }
+      } else {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      }
+    } else {
+      if (field === 'code' && value) {
+        const name = value.charAt(0).toUpperCase() + value.slice(1);
+        setFormData(prev => ({ ...prev, code: value, name }));
+      } else {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    if (type === 'website') {
+      const websiteData = formData as WebsiteFormData;
+      if (!websiteData.code || !websiteData.name || !websiteData.url) {
+        toast.error("All fields are required");
+        return;
+      }
+    } else {
+      const categoryData = formData as CategoryFormData;
+      if (!categoryData.code || !categoryData.name) {
+        toast.error("All fields are required");
+        return;
+      }
+    }
+
+    try {
+      await onSave(formData);
+      onOpenChange(false);
+    } catch (error) {
+      console.error(`Error saving ${type}:`, error);
+      toast.error(`Failed to save ${type}`);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>Add {type === 'website' ? 'Website' : 'Category'}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {type === 'website' && (
+            <div>
+              <Label htmlFor="url">URL</Label>
+              <Input
+                id="url"
+                value={(formData as WebsiteFormData).url}
+                onChange={(e) => handleInputChange('url', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          )}
+          <div>
+            <Label htmlFor="code">Code</Label>
+            <Input
+              id="code"
+              value={formData.code}
+              onChange={(e) => handleInputChange('code', e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleSave}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const RegistryPage = () => {
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
@@ -388,7 +536,7 @@ const RegistryPage = () => {
   };
 
   // Handle sorting
-  const handleSort = (column: string) => {
+  const handleRegistrySort = (column: string) => {
     const currentSort = filters.sort || '';
     const [currentColumn, currentDirection] = currentSort.split(',');
     
@@ -428,15 +576,163 @@ const RegistryPage = () => {
     setSearchTerm('');
   };
 
+  const [websites, setWebsites] = useState<DropdownDTO[]>([]);
+  const [categories, setCategories] = useState<DropdownDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<'website' | 'category'>('website');
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [websitesData, categoriesData] = await Promise.all([
+        registryService.getWebsitesDropdown(),
+        registryService.getCategoriesDropdown()
+      ]);
+      setWebsites(websitesData);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleOpenDialog = (type: 'website' | 'category') => {
+    setDialogType(type);
+    setDialogOpen(true);
+  };
+
+  const handleSave = async (data: WebsiteDTO | DropdownDTO) => {
+    try {
+      if (dialogType === 'website') {
+        await registryService.addWebsite(data as WebsiteDTO);
+        toast.success('Website added successfully');
+      } else {
+        await registryService.addCategory(data as DropdownDTO);
+        toast.success('Category added successfully');
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Error saving:', error);
+      throw error;
+    }
+  };
+
+  const handleDelete = async (type: 'website' | 'category', id: string) => {
+    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) {
+      return;
+    }
+
+    try {
+      if (type === 'website') {
+        await registryService.deleteWebsite(id);
+        toast.success('Website deleted successfully');
+      } else {
+        await registryService.deleteCategory(id);
+        toast.success('Category deleted successfully');
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast.error(`Failed to delete ${type}`);
+    }
+  };
+
+  // New state for websites and categories management
+  const [websiteSearch, setWebsiteSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
+  const [websiteSort, setWebsiteSort] = useState<SortConfig>({ key: 'code', direction: 'asc' });
+  const [categorySort, setCategorySort] = useState<SortConfig>({ key: 'code', direction: 'asc' });
+
+  // Client-side filtering and sorting for websites
+  const filteredWebsites = useMemo(() => {
+    let result = [...websites];
+
+    // Filter
+    if (websiteSearch) {
+      const searchLower = websiteSearch.toLowerCase();
+      result = result.filter(website =>
+        website.code.toLowerCase().includes(searchLower) ||
+        website.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      const aValue = a[websiteSort.key as keyof DropdownDTO];
+      const bValue = b[websiteSort.key as keyof DropdownDTO];
+      return websiteSort.direction === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+
+    return result;
+  }, [websites, websiteSearch, websiteSort]);
+
+  // Client-side filtering and sorting for categories
+  const filteredCategories = useMemo(() => {
+    let result = [...categories];
+
+    // Filter
+    if (categorySearch) {
+      const searchLower = categorySearch.toLowerCase();
+      result = result.filter(category =>
+        category.code.toLowerCase().includes(searchLower) ||
+        category.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      const aValue = a[categorySort.key as keyof DropdownDTO];
+      const bValue = b[categorySort.key as keyof DropdownDTO];
+      return categorySort.direction === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+
+    return result;
+  }, [categories, categorySearch, categorySort]);
+
+  const handleClientSort = (tab: 'website' | 'category', key: keyof DropdownDTO) => {
+    if (tab === 'website') {
+      setWebsiteSort(prev => ({
+        key,
+        direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+      }));
+    } else {
+      setCategorySort(prev => ({
+        key,
+        direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+      }));
+    }
+  };
+
+  const getClientSortIcon = (tab: 'website' | 'category', key: keyof DropdownDTO) => {
+    const sort = tab === 'website' ? websiteSort : categorySort;
+    if (sort.key !== key) return null;
+    return sort.direction === 'asc' ?
+      <ChevronUp className="inline h-4 w-4 ml-1" /> :
+      <ChevronDown className="inline h-4 w-4 ml-1" />;
+  };
+
   return (
     <div className="container mx-auto py-6">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">System Registry</h1>
-        </div>
+      <Tabs defaultValue="registry" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="registry">Registry Items</TabsTrigger>
+          <TabsTrigger value="websites">Websites</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
 
-        <div className="flex gap-4">
-          <Card className="w-full">
+        <TabsContent value="registry">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
                 <CardTitle>Registry Items</CardTitle>
@@ -626,7 +922,7 @@ const RegistryPage = () => {
                     <TableRow>
                       <TableHead 
                         className="w-[100px] cursor-pointer"
-                        onClick={() => handleSort('enabled')}
+                        onClick={() => handleRegistrySort('enabled')}
                       >
                         Enabled
                         {getSortDirection('enabled') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
@@ -634,7 +930,7 @@ const RegistryPage = () => {
                       </TableHead>
                       <TableHead 
                         className="min-w-[120px] cursor-pointer"
-                        onClick={() => handleSort('registryType')}
+                        onClick={() => handleRegistrySort('registryType')}
                       >
                         Type
                         {getSortDirection('registryType') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
@@ -642,7 +938,7 @@ const RegistryPage = () => {
                       </TableHead>
                       <TableHead 
                         className="min-w-[150px] cursor-pointer"
-                        onClick={() => handleSort('registryKey')}
+                        onClick={() => handleRegistrySort('registryKey')}
                       >
                         Key
                         {getSortDirection('registryKey') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
@@ -650,7 +946,7 @@ const RegistryPage = () => {
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleSort('registryValue')}
+                        onClick={() => handleRegistrySort('registryValue')}
                       >
                         Value
                         {getSortDirection('registryValue') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
@@ -838,8 +1134,203 @@ const RegistryPage = () => {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="websites">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle>Websites</CardTitle>
+                <CardDescription>Manage website configurations and mappings</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => handleOpenDialog('website')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Website
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search websites..."
+                    value={websiteSearch}
+                    onChange={(e) => setWebsiteSearch(e.target.value)}
+                    className="pl-8"
+                  />
+                  {websiteSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setWebsiteSearch('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={() => handleClientSort('website', 'code')}
+                      >
+                        Code {getClientSortIcon('website', 'code')}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={() => handleClientSort('website', 'name')}
+                      >
+                        Name {getClientSortIcon('website', 'name')}
+                      </TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          Loading websites...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredWebsites.length === 0 ? (
+                      <TableRow>
+                          <TableCell colSpan={3} className="h-24 text-center">
+                            No websites found.
+                          </TableCell>
+                      </TableRow>
+                    ) : (
+                          filteredWebsites.map((website) => (
+                        <TableRow key={website.code}>
+                          <TableCell>{website.code}</TableCell>
+                          <TableCell>{website.name}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete('website', website.code)}
+                                  className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle>Categories</CardTitle>
+                <CardDescription>Manage category configurations and mappings</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => handleOpenDialog('category')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Category
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search categories..."
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    className="pl-8"
+                  />
+                  {categorySearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setCategorySearch('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={() => handleClientSort('category', 'code')}
+                      >
+                        Code {getClientSortIcon('category', 'code')}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer"
+                        onClick={() => handleClientSort('category', 'name')}
+                      >
+                        Name {getClientSortIcon('category', 'name')}
+                      </TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          Loading categories...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredCategories.length === 0 ? (
+                      <TableRow>
+                          <TableCell colSpan={3} className="h-24 text-center">
+                            No categories found.
+                          </TableCell>
+                      </TableRow>
+                    ) : (
+                          filteredCategories.map((category) => (
+                        <TableRow key={category.code}>
+                          <TableCell>{category.code}</TableCell>
+                          <TableCell>{category.name}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete('category', category.code)}
+                                  className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <RegistryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        type={dialogType}
+        onSave={handleSave}
+      />
     </div>
   );
 };

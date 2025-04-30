@@ -25,12 +25,13 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CrawlerConfigDTO, CrawlerConfigFilter, DropdownDTO, crawlerConfigService } from '@/services/crawlerConfigService';
+import { CrawlerConfigDTO, CrawlerConfigFilter, crawlerConfigService } from '@/services/crawlerConfigService';
 import { format } from 'date-fns';
 import { RotateCw, Settings2, Play, PlayCircle, Edit, Trash2, Plus, ListFilter } from "lucide-react";
 import { toast } from 'sonner';
 import { CrawlerConfigDialog } from '@/components/CrawlerConfigDialog';
 import { TestRunDialog } from '@/components/TestRunDialog';
+import { DropdownDTO, registryService } from '@/services/registryService';
 
 interface PaginatedResponse<T> {
   content: T[];
@@ -74,8 +75,8 @@ export default function CrawlerConfigsPage() {
   const fetchDropdowns = async () => {
     try {
       const [websitesData, categoriesData] = await Promise.all([
-        crawlerConfigService.getWebsitesDropdown(),
-        crawlerConfigService.getCategoriesDropdown()
+        registryService.getWebsitesDropdown(),
+        registryService.getCategoriesDropdown()
       ]);
       setWebsites(websitesData);
       setCategories(categoriesData);
@@ -244,7 +245,7 @@ export default function CrawlerConfigsPage() {
       );
     }
 
-    return data.content.map((item) => (
+    return data.content.map((item: CrawlerConfigDTO) => (
       <TableRow key={item.code}>
         {columnVisibility.code && (
           <TableCell>{item.code}</TableCell>
