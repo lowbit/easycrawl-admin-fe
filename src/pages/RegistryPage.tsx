@@ -1,20 +1,20 @@
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   bulkExportProductRegistry,
   createProductRegistry,
@@ -31,9 +31,9 @@ import {
   getProductRegistryTypes,
   ProductRegistryDTO,
   refreshProductRegistry,
-  updateProductRegistry
-} from '@/services/productService';
-import { useQuery } from '@tanstack/react-query';
+  updateProductRegistry,
+} from "@/services/productService";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronUp,
@@ -47,18 +47,22 @@ import {
   X,
   Plus,
   Trash2,
-  Search
-} from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
-import { toast } from 'sonner';
+  Search,
+} from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { WebsiteDTO, DropdownDTO, registryService } from '@/services/registryService';
+import {
+  WebsiteDTO,
+  DropdownDTO,
+  registryService,
+} from "@/services/registryService";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
@@ -73,7 +77,7 @@ interface RegistryFilter {
 
 interface SortConfig {
   key: string;
-  direction: 'asc' | 'desc';
+  direction: "asc" | "desc";
 }
 
 interface WebsiteFormData {
@@ -91,62 +95,62 @@ const RegistryDialog = ({
   open,
   onOpenChange,
   type,
-  onSave
+  onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: 'website' | 'category';
+  type: "website" | "category";
   onSave: (data: WebsiteDTO | DropdownDTO) => Promise<void>;
 }) => {
   const [formData, setFormData] = useState<WebsiteFormData | CategoryFormData>({
-    code: '',
-    name: '',
-    ...(type === 'website' ? { url: '' } : {})
+    code: "",
+    name: "",
+    ...(type === "website" ? { url: "" } : {}),
   });
 
   useEffect(() => {
     if (open) {
       setFormData({
-        code: '',
-        name: '',
-        ...(type === 'website' ? { url: '' } : {})
+        code: "",
+        name: "",
+        ...(type === "website" ? { url: "" } : {}),
       });
     }
   }, [open, type]);
 
   const handleInputChange = (field: string, value: string) => {
-    if (type === 'website') {
-      if (field === 'url' && value) {
+    if (type === "website") {
+      if (field === "url" && value) {
         try {
           const urlObj = new URL(value);
           const domain = urlObj.hostname;
           const possibleCode = domain;
-          const possibleName = domain.split('.')[0];
+          const possibleName = domain.split(".")[0];
 
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             url: value,
             code: possibleCode,
-            name: possibleName.charAt(0).toUpperCase() + possibleName.slice(1)
+            name: possibleName.charAt(0).toUpperCase() + possibleName.slice(1),
           }));
         } catch (error) {
-          setFormData(prev => ({ ...prev, url: value }));
+          setFormData((prev) => ({ ...prev, url: value }));
         }
       } else {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
       }
     } else {
-      if (field === 'code' && value) {
+      if (field === "code" && value) {
         const name = value.charAt(0).toUpperCase() + value.slice(1);
-        setFormData(prev => ({ ...prev, code: value, name }));
+        setFormData((prev) => ({ ...prev, code: value, name }));
       } else {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
       }
     }
   };
 
   const handleSave = async () => {
-    if (type === 'website') {
+    if (type === "website") {
       const websiteData = formData as WebsiteFormData;
       if (!websiteData.code || !websiteData.name || !websiteData.url) {
         toast.error("All fields are required");
@@ -173,16 +177,18 @@ const RegistryDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Add {type === 'website' ? 'Website' : 'Category'}</DialogTitle>
+          <DialogTitle>
+            Add {type === "website" ? "Website" : "Category"}
+          </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {type === 'website' && (
+          {type === "website" && (
             <div>
               <Label htmlFor="url">URL</Label>
               <Input
                 id="url"
                 value={(formData as WebsiteFormData).url}
-                onChange={(e) => handleInputChange('url', e.target.value)}
+                onChange={(e) => handleInputChange("url", e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -192,7 +198,7 @@ const RegistryDialog = ({
             <Input
               id="code"
               value={formData.code}
-              onChange={(e) => handleInputChange('code', e.target.value)}
+              onChange={(e) => handleInputChange("code", e.target.value)}
               className="mt-1"
             />
           </div>
@@ -201,7 +207,7 @@ const RegistryDialog = ({
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+              onChange={(e) => handleInputChange("name", e.target.value)}
               className="mt-1"
             />
           </div>
@@ -220,52 +226,53 @@ const RegistryDialog = ({
 };
 
 const RegistryPage = () => {
-  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
+  const [selectedType, setSelectedType] = useState<string | undefined>(
+    undefined
+  );
   const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
-  const [newItem, setNewItem] = useState<Omit<ProductRegistryDTO, 'id'>>({
-    registryType: '',
-    registryKey: '',
-    registryValue: '',
-    description: '',
-    enabled: true
+  const [newItem, setNewItem] = useState<Omit<ProductRegistryDTO, "id">>({
+    registryType: "",
+    registryKey: "",
+    registryValue: "",
+    description: "",
+    enabled: true,
   });
-  const [editItems, setEditItems] = useState<{ [key: number]: ProductRegistryDTO }>({});
+  const [editItems, setEditItems] = useState<{
+    [key: number]: ProductRegistryDTO;
+  }>({});
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshingCache, setIsRefreshingCache] = useState(false);
-  
+
   // Pagination state
   const [filters, setFilters] = useState<RegistryFilter>({
     page: 0,
     size: 10,
-    sort: 'registryType,asc'
+    sort: "registryType,asc",
   });
 
   // Load registry types
-  const { 
-    data: registryTypes = [], 
-    isLoading: isLoadingTypes 
-  } = useQuery({
-    queryKey: ['registry-types'],
+  const { data: registryTypes = [], isLoading: isLoadingTypes } = useQuery({
+    queryKey: ["registry-types"],
     queryFn: getProductRegistryTypes,
   });
 
   // Load registry items with pagination
-  const { 
+  const {
     data: registryData,
     isLoading: isLoadingItems,
-    refetch: refetchItems
+    refetch: refetchItems,
   } = useQuery({
-    queryKey: ['registry-items', filters],
+    queryKey: ["registry-items", filters],
     queryFn: () => {
       const params = new URLSearchParams();
-      params.append('page', filters.page.toString());
-      params.append('size', filters.size.toString());
-      if (filters.sort) params.append('sort', filters.sort);
-      if (filters.type) params.append('type', filters.type);
-      if (filters.search) params.append('search', filters.search);
-      
+      params.append("page", filters.page.toString());
+      params.append("size", filters.size.toString());
+      if (filters.sort) params.append("sort", filters.sort);
+      if (filters.type) params.append("type", filters.type);
+      if (filters.search) params.append("search", filters.search);
+
       const queryString = params.toString();
       // @ts-ignore: We know this function accepts an optional parameter
       return getProductRegistry(queryString);
@@ -279,17 +286,17 @@ const RegistryPage = () => {
   useEffect(() => {
     if (registryTypes.length > 0 && !selectedType && !newItem.registryType) {
       const firstType = registryTypes[0];
-      setNewItem(prev => ({ ...prev, registryType: firstType }));
+      setNewItem((prev) => ({ ...prev, registryType: firstType }));
     }
   }, [registryTypes, selectedType, newItem.registryType]);
 
   // Apply search term with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      setFilters(prev => ({
+      setFilters((prev) => ({
         ...prev,
         page: 0,
-        search: searchTerm || undefined
+        search: searchTerm || undefined,
       }));
     }, 300);
 
@@ -298,16 +305,16 @@ const RegistryPage = () => {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    
+
     // Reset filters and refresh data
     setFilters({
       page: 0,
       size: 10,
-      sort: 'registryType,asc'
+      sort: "registryType,asc",
     });
     setSelectedType(undefined);
-    setSearchTerm('');
-    
+    setSearchTerm("");
+
     refetchItems().finally(() => {
       setIsRefreshing(false);
     });
@@ -317,21 +324,21 @@ const RegistryPage = () => {
     // Handle "__all__" special value
     const actualType = type === "__all__" ? undefined : type;
     setSelectedType(actualType);
-    
+
     if (isAddingNew) {
-      setNewItem(prev => ({ 
-        ...prev, 
-        registryType: actualType || registryTypes[0] || '' 
+      setNewItem((prev) => ({
+        ...prev,
+        registryType: actualType || registryTypes[0] || "",
       }));
     }
-    
+
     setEditMode({});
-    
+
     // Reset pagination and update type filter
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       page: 0,
-      type: actualType
+      type: actualType,
     }));
   };
 
@@ -339,10 +346,10 @@ const RegistryPage = () => {
     try {
       setIsRefreshingCache(true);
       await refreshProductRegistry();
-      toast.success('Registry cache refreshed successfully');
+      toast.success("Registry cache refreshed successfully");
     } catch (error) {
-      console.error('Error refreshing registry cache:', error);
-      toast.error('Failed to refresh registry cache');
+      console.error("Error refreshing registry cache:", error);
+      toast.error("Failed to refresh registry cache");
     } finally {
       setIsRefreshingCache(false);
     }
@@ -352,40 +359,43 @@ const RegistryPage = () => {
     setIsAddingNew(!isAddingNew);
     if (!isAddingNew) {
       setNewItem({
-        registryType: selectedType || registryTypes[0] || '',
-        registryKey: '',
-        registryValue: '',
-        description: '',
-        enabled: true
+        registryType: selectedType || registryTypes[0] || "",
+        registryKey: "",
+        registryValue: "",
+        description: "",
+        enabled: true,
       });
     }
   };
 
-  const handleNewItemChange = (field: keyof Omit<ProductRegistryDTO, 'id'>, value: string | boolean) => {
-    setNewItem(prev => ({ ...prev, [field]: value }));
+  const handleNewItemChange = (
+    field: keyof Omit<ProductRegistryDTO, "id">,
+    value: string | boolean
+  ) => {
+    setNewItem((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateItem = async () => {
     try {
       if (!newItem.registryKey) {
-        toast.error('Key is required');
+        toast.error("Key is required");
         return;
       }
 
       await createProductRegistry(newItem);
-      toast.success('Registry item created successfully');
+      toast.success("Registry item created successfully");
       setIsAddingNew(false);
       setNewItem({
-        registryType: selectedType || registryTypes[0] || '',
-        registryKey: '',
-        registryValue: '',
-        description: '',
-        enabled: true
+        registryType: selectedType || registryTypes[0] || "",
+        registryKey: "",
+        registryValue: "",
+        description: "",
+        enabled: true,
       });
       refetchItems();
     } catch (error) {
-      console.error('Error creating registry item:', error);
-      toast.error('Failed to create registry item');
+      console.error("Error creating registry item:", error);
+      toast.error("Failed to create registry item");
     }
   };
 
@@ -395,37 +405,41 @@ const RegistryPage = () => {
       handleUpdateItem(item.id);
     } else {
       // Enter edit mode
-      setEditItems(prev => ({
+      setEditItems((prev) => ({
         ...prev,
-        [item.id]: { ...item }
+        [item.id]: { ...item },
       }));
-      setEditMode(prev => ({
+      setEditMode((prev) => ({
         ...prev,
-        [item.id]: true
+        [item.id]: true,
       }));
     }
   };
 
   const handleCancelEdit = (id: number) => {
-    setEditMode(prev => {
+    setEditMode((prev) => {
       const updated = { ...prev };
       delete updated[id];
       return updated;
     });
-    setEditItems(prev => {
+    setEditItems((prev) => {
       const updated = { ...prev };
       delete updated[id];
       return updated;
     });
   };
 
-  const handleEditItemChange = (id: number, field: keyof ProductRegistryDTO, value: string | boolean) => {
-    setEditItems(prev => ({
+  const handleEditItemChange = (
+    id: number,
+    field: keyof ProductRegistryDTO,
+    value: string | boolean
+  ) => {
+    setEditItems((prev) => ({
       ...prev,
       [id]: {
         ...prev[id],
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
@@ -433,7 +447,7 @@ const RegistryPage = () => {
     try {
       const item = editItems[id];
       if (!item.registryKey) {
-        toast.error('Key is required');
+        toast.error("Key is required");
         return;
       }
 
@@ -442,71 +456,79 @@ const RegistryPage = () => {
         registryKey: item.registryKey,
         registryValue: item.registryValue,
         description: item.description,
-        enabled: item.enabled
+        enabled: item.enabled,
       });
 
-      toast.success('Registry item updated successfully');
-      setEditMode(prev => {
+      toast.success("Registry item updated successfully");
+      setEditMode((prev) => {
         const updated = { ...prev };
         delete updated[id];
         return updated;
       });
-      setEditItems(prev => {
+      setEditItems((prev) => {
         const updated = { ...prev };
         delete updated[id];
         return updated;
       });
       refetchItems();
     } catch (error) {
-      console.error('Error updating registry item:', error);
-      toast.error('Failed to update registry item');
+      console.error("Error updating registry item:", error);
+      toast.error("Failed to update registry item");
     }
   };
 
   const handleDeleteItem = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this registry item?')) {
+    if (!confirm("Are you sure you want to delete this registry item?")) {
       return;
     }
 
     try {
       await deleteProductRegistry(id);
-      toast.success('Registry item deleted successfully');
+      toast.success("Registry item deleted successfully");
       refetchItems();
     } catch (error) {
-      console.error('Error deleting registry item:', error);
-      toast.error('Failed to delete registry item');
+      console.error("Error deleting registry item:", error);
+      toast.error("Failed to delete registry item");
     }
   };
 
   const exportRegistry = () => {
     try {
-      bulkExportProductRegistry().then(data => {
-        const dataStr = JSON.stringify(data, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        
-        const exportFileDefaultName = `registry-${selectedType || 'all'}-${new Date().toISOString().split('T')[0]}.json`;
-        
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-        
-        toast.success(`Successfully exported ${data.length} registry entries`);
-      }).catch(error => {
-        console.error('Error exporting registry:', error);
-        toast.error('Failed to export registry');
-      });
+      bulkExportProductRegistry()
+        .then((data) => {
+          const dataStr = JSON.stringify(data, null, 2);
+          const dataUri =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(dataStr);
+
+          const exportFileDefaultName = `registry-${selectedType || "all"}-${
+            new Date().toISOString().split("T")[0]
+          }.json`;
+
+          const linkElement = document.createElement("a");
+          linkElement.setAttribute("href", dataUri);
+          linkElement.setAttribute("download", exportFileDefaultName);
+          linkElement.click();
+
+          toast.success(
+            `Successfully exported ${data.length} registry entries`
+          );
+        })
+        .catch((error) => {
+          console.error("Error exporting registry:", error);
+          toast.error("Failed to export registry");
+        });
     } catch (error) {
-      console.error('Error exporting registry:', error);
-      toast.error('Failed to export registry');
+      console.error("Error exporting registry:", error);
+      toast.error("Failed to export registry");
     }
   };
 
   const importRegistry = () => {
     try {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'application/json';
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "application/json";
       fileInput.onchange = (e: any) => {
         const file = e.target.files[0];
         if (file) {
@@ -515,14 +537,16 @@ const RegistryPage = () => {
             try {
               const content = e.target?.result as string;
               const json = JSON.parse(content);
-              
+
               // Process the imported data (e.g., send to backend)
-              console.log('Imported data:', json);
-              toast.success(`Successfully imported ${json.length} registry entries`);
+              console.log("Imported data:", json);
+              toast.success(
+                `Successfully imported ${json.length} registry entries`
+              );
               refetchItems();
             } catch (error) {
-              console.error('Error parsing JSON:', error);
-              toast.error('Failed to parse import file');
+              console.error("Error parsing JSON:", error);
+              toast.error("Failed to parse import file");
             }
           };
           reader.readAsText(file);
@@ -530,70 +554,73 @@ const RegistryPage = () => {
       };
       fileInput.click();
     } catch (error) {
-      console.error('Error during import:', error);
-      toast.error('Failed to import registry');
+      console.error("Error during import:", error);
+      toast.error("Failed to import registry");
     }
   };
 
   // Handle sorting
   const handleRegistrySort = (column: string) => {
-    const currentSort = filters.sort || '';
-    const [currentColumn, currentDirection] = currentSort.split(',');
-    
-    const direction = currentColumn === column && currentDirection === 'asc' ? 'desc' : 'asc';
-    setFilters(prev => ({
+    const currentSort = filters.sort || "";
+    const [currentColumn, currentDirection] = currentSort.split(",");
+
+    const direction =
+      currentColumn === column && currentDirection === "asc" ? "desc" : "asc";
+    setFilters((prev) => ({
       ...prev,
-      sort: `${column},${direction}`
+      sort: `${column},${direction}`,
     }));
   };
 
   // Get current sort direction for a column
   const getSortDirection = (column: string) => {
-    const currentSort = filters.sort || '';
-    const [currentColumn, direction] = currentSort.split(',');
+    const currentSort = filters.sort || "";
+    const [currentColumn, direction] = currentSort.split(",");
     return currentColumn === column ? direction : undefined;
   };
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      page: newPage
+      page: newPage,
     }));
   };
 
   // Handle items per page change
   const handlePageSizeChange = (size: number) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       page: 0,
-      size
+      size,
     }));
   };
 
   // Clear search
   const clearSearch = () => {
-    setSearchTerm('');
+    setSearchTerm("");
   };
 
   const [websites, setWebsites] = useState<DropdownDTO[]>([]);
   const [categories, setCategories] = useState<DropdownDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<'website' | 'category'>('website');
+  const [dialogType, setDialogType] = useState<"website" | "category">(
+    "website"
+  );
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [websitesData, categoriesData] = await Promise.all([
         registryService.getWebsitesDropdown(),
-        registryService.getCategoriesDropdown()
+        registryService.getCategoriesDropdown(),
       ]);
       setWebsites(websitesData);
       setCategories(categoriesData);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to fetch data');
+      console.error("Error fetching data:", error);
+      toast.error("Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -603,52 +630,58 @@ const RegistryPage = () => {
     fetchData();
   }, []);
 
-  const handleOpenDialog = (type: 'website' | 'category') => {
+  const handleOpenDialog = (type: "website" | "category") => {
     setDialogType(type);
     setDialogOpen(true);
   };
 
   const handleSave = async (data: WebsiteDTO | DropdownDTO) => {
     try {
-      if (dialogType === 'website') {
+      if (dialogType === "website") {
         await registryService.addWebsite(data as WebsiteDTO);
-        toast.success('Website added successfully');
+        toast.success("Website added successfully");
       } else {
         await registryService.addCategory(data as DropdownDTO);
-        toast.success('Category added successfully');
+        toast.success("Category added successfully");
       }
       fetchData();
     } catch (error) {
-      console.error('Error saving:', error);
+      console.error("Error saving:", error);
       throw error;
     }
   };
 
-  const handleDelete = async (type: 'website' | 'category', id: string) => {
+  const handleDelete = async (type: "website" | "category", id: string) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) {
       return;
     }
 
     try {
-      if (type === 'website') {
+      if (type === "website") {
         await registryService.deleteWebsite(id);
-        toast.success('Website deleted successfully');
+        toast.success("Website deleted successfully");
       } else {
         await registryService.deleteCategory(id);
-        toast.success('Category deleted successfully');
+        toast.success("Category deleted successfully");
       }
       fetchData();
     } catch (error) {
-      console.error('Error deleting:', error);
+      console.error("Error deleting:", error);
       toast.error(`Failed to delete ${type}`);
     }
   };
 
   // New state for websites and categories management
-  const [websiteSearch, setWebsiteSearch] = useState('');
-  const [categorySearch, setCategorySearch] = useState('');
-  const [websiteSort, setWebsiteSort] = useState<SortConfig>({ key: 'code', direction: 'asc' });
-  const [categorySort, setCategorySort] = useState<SortConfig>({ key: 'code', direction: 'asc' });
+  const [websiteSearch, setWebsiteSearch] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
+  const [websiteSort, setWebsiteSort] = useState<SortConfig>({
+    key: "code",
+    direction: "asc",
+  });
+  const [categorySort, setCategorySort] = useState<SortConfig>({
+    key: "code",
+    direction: "asc",
+  });
 
   // Client-side filtering and sorting for websites
   const filteredWebsites = useMemo(() => {
@@ -657,9 +690,10 @@ const RegistryPage = () => {
     // Filter
     if (websiteSearch) {
       const searchLower = websiteSearch.toLowerCase();
-      result = result.filter(website =>
-        website.code.toLowerCase().includes(searchLower) ||
-        website.name.toLowerCase().includes(searchLower)
+      result = result.filter(
+        (website) =>
+          website.code.toLowerCase().includes(searchLower) ||
+          website.name.toLowerCase().includes(searchLower)
       );
     }
 
@@ -667,7 +701,7 @@ const RegistryPage = () => {
     result.sort((a, b) => {
       const aValue = a[websiteSort.key as keyof DropdownDTO];
       const bValue = b[websiteSort.key as keyof DropdownDTO];
-      return websiteSort.direction === 'asc'
+      return websiteSort.direction === "asc"
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     });
@@ -682,9 +716,10 @@ const RegistryPage = () => {
     // Filter
     if (categorySearch) {
       const searchLower = categorySearch.toLowerCase();
-      result = result.filter(category =>
-        category.code.toLowerCase().includes(searchLower) ||
-        category.name.toLowerCase().includes(searchLower)
+      result = result.filter(
+        (category) =>
+          category.code.toLowerCase().includes(searchLower) ||
+          category.name.toLowerCase().includes(searchLower)
       );
     }
 
@@ -692,7 +727,7 @@ const RegistryPage = () => {
     result.sort((a, b) => {
       const aValue = a[categorySort.key as keyof DropdownDTO];
       const bValue = b[categorySort.key as keyof DropdownDTO];
-      return categorySort.direction === 'asc'
+      return categorySort.direction === "asc"
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     });
@@ -700,26 +735,36 @@ const RegistryPage = () => {
     return result;
   }, [categories, categorySearch, categorySort]);
 
-  const handleClientSort = (tab: 'website' | 'category', key: keyof DropdownDTO) => {
-    if (tab === 'website') {
-      setWebsiteSort(prev => ({
+  const handleClientSort = (
+    tab: "website" | "category",
+    key: keyof DropdownDTO
+  ) => {
+    if (tab === "website") {
+      setWebsiteSort((prev) => ({
         key,
-        direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        direction:
+          prev.key === key && prev.direction === "asc" ? "desc" : "asc",
       }));
     } else {
-      setCategorySort(prev => ({
+      setCategorySort((prev) => ({
         key,
-        direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        direction:
+          prev.key === key && prev.direction === "asc" ? "desc" : "asc",
       }));
     }
   };
 
-  const getClientSortIcon = (tab: 'website' | 'category', key: keyof DropdownDTO) => {
-    const sort = tab === 'website' ? websiteSort : categorySort;
+  const getClientSortIcon = (
+    tab: "website" | "category",
+    key: keyof DropdownDTO
+  ) => {
+    const sort = tab === "website" ? websiteSort : categorySort;
     if (sort.key !== key) return null;
-    return sort.direction === 'asc' ?
-      <ChevronUp className="inline h-4 w-4 ml-1" /> :
-      <ChevronDown className="inline h-4 w-4 ml-1" />;
+    return sort.direction === "asc" ? (
+      <ChevronUp className="inline h-4 w-4 ml-1" />
+    ) : (
+      <ChevronDown className="inline h-4 w-4 ml-1" />
+    );
   };
 
   return (
@@ -758,24 +803,16 @@ const RegistryPage = () => {
                     </>
                   )}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportRegistry}
-                >
+                <Button variant="outline" size="sm" onClick={exportRegistry}>
                   <FileDown className="mr-2 h-4 w-4" />
                   Export
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={importRegistry}
-                >
+                <Button variant="outline" size="sm" onClick={importRegistry}>
                   <FileUp className="mr-2 h-4 w-4" />
                   Import
                 </Button>
                 <Button
-                  variant="default" 
+                  variant="default"
                   size="sm"
                   onClick={handleRefreshRegistry}
                   disabled={isRefreshingCache}
@@ -817,12 +854,11 @@ const RegistryPage = () => {
                       <SelectContent>
                         <SelectItem value="__all__">All Types</SelectItem>
                         {Array.isArray(registryTypes) &&
-  registryTypes.map((type: string) => (
-    <SelectItem key={type} value={type}>
-      {type}
-    </SelectItem>
-  ))}
-
+                          registryTypes.map((type: string) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -848,25 +884,28 @@ const RegistryPage = () => {
 
               {isAddingNew && (
                 <div className="mb-6 p-4 border rounded-md bg-muted/40">
-                  <h3 className="text-sm font-medium mb-3">Add New Registry Item</h3>
+                  <h3 className="text-sm font-medium mb-3">
+                    Add New Registry Item
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                       <label className="text-sm font-medium">Type</label>
                       <Select
                         value={newItem.registryType}
-                        onValueChange={(value) => handleNewItemChange('registryType', value)}
+                        onValueChange={(value) =>
+                          handleNewItemChange("registryType", value)
+                        }
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                        {Array.isArray(registryTypes) &&
-  registryTypes.map((type: string) => (
-    <SelectItem key={type} value={type}>
-      {type}
-    </SelectItem>
-  ))}
-
+                          {Array.isArray(registryTypes) &&
+                            registryTypes.map((type: string) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -874,7 +913,9 @@ const RegistryPage = () => {
                       <label className="text-sm font-medium">Key</label>
                       <Input
                         value={newItem.registryKey}
-                        onChange={(e) => handleNewItemChange('registryKey', e.target.value)}
+                        onChange={(e) =>
+                          handleNewItemChange("registryKey", e.target.value)
+                        }
                         placeholder="Enter registry key"
                         className="mt-1"
                       />
@@ -883,7 +924,9 @@ const RegistryPage = () => {
                       <label className="text-sm font-medium">Value</label>
                       <Input
                         value={newItem.registryValue}
-                        onChange={(e) => handleNewItemChange('registryValue', e.target.value)}
+                        onChange={(e) =>
+                          handleNewItemChange("registryValue", e.target.value)
+                        }
                         placeholder="Enter registry value"
                         className="mt-1"
                       />
@@ -893,7 +936,9 @@ const RegistryPage = () => {
                     <label className="text-sm font-medium">Description</label>
                     <Input
                       value={newItem.description}
-                      onChange={(e) => handleNewItemChange('description', e.target.value)}
+                      onChange={(e) =>
+                        handleNewItemChange("description", e.target.value)
+                      }
                       placeholder="Enter description (optional)"
                       className="mt-1"
                     />
@@ -901,7 +946,9 @@ const RegistryPage = () => {
                   <div className="flex items-center space-x-2 mb-4">
                     <Switch
                       checked={newItem.enabled}
-                      onCheckedChange={(checked) => handleNewItemChange('enabled', checked)}
+                      onCheckedChange={(checked) =>
+                        handleNewItemChange("enabled", checked)
+                      }
                       id="new-item-enabled"
                     />
                     <label
@@ -924,40 +971,58 @@ const RegistryPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead 
+                      <TableHead
                         className="w-[100px] cursor-pointer"
-                        onClick={() => handleRegistrySort('enabled')}
+                        onClick={() => handleRegistrySort("enabled")}
                       >
                         Enabled
-                        {getSortDirection('enabled') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
-                        {getSortDirection('enabled') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection("enabled") === "asc" && (
+                          <ChevronUp className="inline h-4 w-4 ml-1" />
+                        )}
+                        {getSortDirection("enabled") === "desc" && (
+                          <ChevronDown className="inline h-4 w-4 ml-1" />
+                        )}
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         className="min-w-[120px] cursor-pointer"
-                        onClick={() => handleRegistrySort('registryType')}
+                        onClick={() => handleRegistrySort("registryType")}
                       >
                         Type
-                        {getSortDirection('registryType') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
-                        {getSortDirection('registryType') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection("registryType") === "asc" && (
+                          <ChevronUp className="inline h-4 w-4 ml-1" />
+                        )}
+                        {getSortDirection("registryType") === "desc" && (
+                          <ChevronDown className="inline h-4 w-4 ml-1" />
+                        )}
                       </TableHead>
-                      <TableHead 
+                      <TableHead
                         className="min-w-[150px] cursor-pointer"
-                        onClick={() => handleRegistrySort('registryKey')}
+                        onClick={() => handleRegistrySort("registryKey")}
                       >
                         Key
-                        {getSortDirection('registryKey') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
-                        {getSortDirection('registryKey') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection("registryKey") === "asc" && (
+                          <ChevronUp className="inline h-4 w-4 ml-1" />
+                        )}
+                        {getSortDirection("registryKey") === "desc" && (
+                          <ChevronDown className="inline h-4 w-4 ml-1" />
+                        )}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleRegistrySort('registryValue')}
+                        onClick={() => handleRegistrySort("registryValue")}
                       >
                         Value
-                        {getSortDirection('registryValue') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
-                        {getSortDirection('registryValue') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection("registryValue") === "asc" && (
+                          <ChevronUp className="inline h-4 w-4 ml-1" />
+                        )}
+                        {getSortDirection("registryValue") === "desc" && (
+                          <ChevronDown className="inline h-4 w-4 ml-1" />
+                        )}
                       </TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead className="w-[100px] text-right">Actions</TableHead>
+                      <TableHead className="w-[100px] text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -980,29 +1045,44 @@ const RegistryPage = () => {
                             {editMode[item.id] ? (
                               <Switch
                                 checked={editItems[item.id]?.enabled}
-                                onCheckedChange={(checked) => handleEditItemChange(item.id, 'enabled', checked)}
+                                onCheckedChange={(checked) =>
+                                  handleEditItemChange(
+                                    item.id,
+                                    "enabled",
+                                    checked
+                                  )
+                                }
                               />
                             ) : (
-                              <div className={`h-2 w-2 rounded-full ${item.enabled ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div
+                                className={`h-2 w-2 rounded-full ${
+                                  item.enabled ? "bg-green-500" : "bg-red-500"
+                                }`}
+                              />
                             )}
                           </TableCell>
                           <TableCell>
                             {editMode[item.id] ? (
                               <Select
-                                value={editItems[item.id]?.registryType || ''}
-                                onValueChange={(value) => handleEditItemChange(item.id, 'registryType', value)}
+                                value={editItems[item.id]?.registryType || ""}
+                                onValueChange={(value) =>
+                                  handleEditItemChange(
+                                    item.id,
+                                    "registryType",
+                                    value
+                                  )
+                                }
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                {Array.isArray(registryTypes) &&
-  registryTypes.map((type: string) => (
-    <SelectItem key={type} value={type}>
-      {type}
-    </SelectItem>
-  ))}
-
+                                  {Array.isArray(registryTypes) &&
+                                    registryTypes.map((type: string) => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
                             ) : (
@@ -1012,8 +1092,14 @@ const RegistryPage = () => {
                           <TableCell>
                             {editMode[item.id] ? (
                               <Input
-                                value={editItems[item.id]?.registryKey || ''}
-                                onChange={(e) => handleEditItemChange(item.id, 'registryKey', e.target.value)}
+                                value={editItems[item.id]?.registryKey || ""}
+                                onChange={(e) =>
+                                  handleEditItemChange(
+                                    item.id,
+                                    "registryKey",
+                                    e.target.value
+                                  )
+                                }
                               />
                             ) : (
                               item.registryKey
@@ -1022,8 +1108,14 @@ const RegistryPage = () => {
                           <TableCell>
                             {editMode[item.id] ? (
                               <Input
-                                value={editItems[item.id]?.registryValue || ''}
-                                onChange={(e) => handleEditItemChange(item.id, 'registryValue', e.target.value)}
+                                value={editItems[item.id]?.registryValue || ""}
+                                onChange={(e) =>
+                                  handleEditItemChange(
+                                    item.id,
+                                    "registryValue",
+                                    e.target.value
+                                  )
+                                }
                               />
                             ) : (
                               item.registryValue
@@ -1032,11 +1124,17 @@ const RegistryPage = () => {
                           <TableCell>
                             {editMode[item.id] ? (
                               <Input
-                                value={editItems[item.id]?.description || ''}
-                                onChange={(e) => handleEditItemChange(item.id, 'description', e.target.value)}
+                                value={editItems[item.id]?.description || ""}
+                                onChange={(e) =>
+                                  handleEditItemChange(
+                                    item.id,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
                               />
                             ) : (
-                              item.description || '-'
+                              item.description || "-"
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -1084,7 +1182,9 @@ const RegistryPage = () => {
                   <div className="flex items-center gap-2">
                     <Select
                       value={filters.size.toString()}
-                      onValueChange={(value) => handlePageSizeChange(parseInt(value))}
+                      onValueChange={(value) =>
+                        handlePageSizeChange(parseInt(value))
+                      }
                     >
                       <SelectTrigger className="w-[80px]">
                         <SelectValue placeholder="10" />
@@ -1096,7 +1196,9 @@ const RegistryPage = () => {
                         <SelectItem value="50">50</SelectItem>
                       </SelectContent>
                     </Select>
-                    <span className="text-sm text-gray-500">Items per page</span>
+                    <span className="text-sm text-gray-500">
+                      Items per page
+                    </span>
                   </div>
 
                   <div className="flex gap-2">
@@ -1121,7 +1223,10 @@ const RegistryPage = () => {
                     </span>
                     <Button
                       variant="outline"
-                      disabled={isLoadingItems || (registryData.number >= registryData.totalPages - 1)}
+                      disabled={
+                        isLoadingItems ||
+                        registryData.number >= registryData.totalPages - 1
+                      }
                       onClick={() => handlePageChange(filters.page + 1)}
                       size="sm"
                     >
@@ -1129,8 +1234,13 @@ const RegistryPage = () => {
                     </Button>
                     <Button
                       variant="outline"
-                      disabled={isLoadingItems || (registryData.number >= registryData.totalPages - 1)}
-                      onClick={() => handlePageChange(registryData.totalPages - 1)}
+                      disabled={
+                        isLoadingItems ||
+                        registryData.number >= registryData.totalPages - 1
+                      }
+                      onClick={() =>
+                        handlePageChange(registryData.totalPages - 1)
+                      }
                       size="sm"
                     >
                       Last
@@ -1147,10 +1257,12 @@ const RegistryPage = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
                 <CardTitle>Websites</CardTitle>
-                <CardDescription>Manage website configurations and mappings</CardDescription>
+                <CardDescription>
+                  Manage website configurations and mappings
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={() => handleOpenDialog('website')}>
+                <Button onClick={() => handleOpenDialog("website")}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Website
                 </Button>
@@ -1171,7 +1283,7 @@ const RegistryPage = () => {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full"
-                      onClick={() => setWebsiteSearch('')}
+                      onClick={() => setWebsiteSearch("")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -1185,15 +1297,15 @@ const RegistryPage = () => {
                     <TableRow>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleClientSort('website', 'code')}
+                        onClick={() => handleClientSort("website", "code")}
                       >
-                        Code {getClientSortIcon('website', 'code')}
+                        Code {getClientSortIcon("website", "code")}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleClientSort('website', 'name')}
+                        onClick={() => handleClientSort("website", "name")}
                       >
-                        Name {getClientSortIcon('website', 'name')}
+                        Name {getClientSortIcon("website", "name")}
                       </TableHead>
                       <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
@@ -1207,12 +1319,12 @@ const RegistryPage = () => {
                       </TableRow>
                     ) : filteredWebsites.length === 0 ? (
                       <TableRow>
-                          <TableCell colSpan={3} className="h-24 text-center">
-                            No websites found.
-                          </TableCell>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          No websites found.
+                        </TableCell>
                       </TableRow>
                     ) : (
-                          filteredWebsites.map((website) => (
+                      filteredWebsites.map((website) => (
                         <TableRow key={website.code}>
                           <TableCell>{website.code}</TableCell>
                           <TableCell>{website.name}</TableCell>
@@ -1220,8 +1332,10 @@ const RegistryPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete('website', website.code)}
-                                  className="text-destructive"
+                              onClick={() =>
+                                handleDelete("website", website.code)
+                              }
+                              className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1241,10 +1355,12 @@ const RegistryPage = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
                 <CardTitle>Categories</CardTitle>
-                <CardDescription>Manage category configurations and mappings</CardDescription>
+                <CardDescription>
+                  Manage category configurations and mappings
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={() => handleOpenDialog('category')}>
+                <Button onClick={() => handleOpenDialog("category")}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Category
                 </Button>
@@ -1265,7 +1381,7 @@ const RegistryPage = () => {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full"
-                      onClick={() => setCategorySearch('')}
+                      onClick={() => setCategorySearch("")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -1279,15 +1395,15 @@ const RegistryPage = () => {
                     <TableRow>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleClientSort('category', 'code')}
+                        onClick={() => handleClientSort("category", "code")}
                       >
-                        Code {getClientSortIcon('category', 'code')}
+                        Code {getClientSortIcon("category", "code")}
                       </TableHead>
                       <TableHead
                         className="cursor-pointer"
-                        onClick={() => handleClientSort('category', 'name')}
+                        onClick={() => handleClientSort("category", "name")}
                       >
-                        Name {getClientSortIcon('category', 'name')}
+                        Name {getClientSortIcon("category", "name")}
                       </TableHead>
                       <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
@@ -1301,12 +1417,12 @@ const RegistryPage = () => {
                       </TableRow>
                     ) : filteredCategories.length === 0 ? (
                       <TableRow>
-                          <TableCell colSpan={3} className="h-24 text-center">
-                            No categories found.
-                          </TableCell>
+                        <TableCell colSpan={3} className="h-24 text-center">
+                          No categories found.
+                        </TableCell>
                       </TableRow>
                     ) : (
-                          filteredCategories.map((category) => (
+                      filteredCategories.map((category) => (
                         <TableRow key={category.code}>
                           <TableCell>{category.code}</TableCell>
                           <TableCell>{category.name}</TableCell>
@@ -1314,8 +1430,10 @@ const RegistryPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete('category', category.code)}
-                                  className="text-destructive"
+                              onClick={() =>
+                                handleDelete("category", category.code)
+                              }
+                              className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1341,4 +1459,4 @@ const RegistryPage = () => {
   );
 };
 
-export default RegistryPage; 
+export default RegistryPage;
