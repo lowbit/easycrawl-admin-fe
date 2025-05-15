@@ -462,12 +462,13 @@ const RegistryPage = () => {
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__all__">All Types</SelectItem>
-                        {registryTypes.map((type: string) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
+                      {Array.isArray(registryTypes) &&
+  registryTypes.map((type: string) => (
+    <SelectItem key={type} value={type}>
+      {type}
+    </SelectItem>
+  ))}
+
                       </SelectContent>
                     </Select>
                   </div>
@@ -540,11 +541,13 @@ const RegistryPage = () => {
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                          {registryTypes.map((type: string) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
+                        {Array.isArray(registryTypes) &&
+  registryTypes.map((type: string) => (
+    <SelectItem key={type} value={type}>
+      {type}
+    </SelectItem>
+  ))}
+
                         </SelectContent>
                       </Select>
                     </div>
@@ -674,11 +677,13 @@ const RegistryPage = () => {
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {registryTypes.map((type: string) => (
-                                    <SelectItem key={type} value={type}>
-                                      {type}
-                                    </SelectItem>
-                                  ))}
+                                {Array.isArray(registryTypes) &&
+  registryTypes.map((type: string) => (
+    <SelectItem key={type} value={type}>
+      {type}
+    </SelectItem>
+  ))}
+
                                 </SelectContent>
                               </Select>
                             ) : (
