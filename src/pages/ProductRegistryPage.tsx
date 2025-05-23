@@ -49,6 +49,15 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+// Format date function
+const formatDate = (dateString?: string) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) 
+    ? '-' 
+    : date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 // Add pagination related types
 interface RegistryFilter {
   type?: string;
@@ -77,7 +86,7 @@ const RegistryPage = () => {
   const [filters, setFilters] = useState<RegistryFilter>({
     page: 0,
     size: 10,
-    sort: 'registryType,asc'
+    sort: 'created,desc'
   });
 
   // Load registry types
@@ -635,19 +644,27 @@ const RegistryPage = () => {
                         {getSortDirection('registryValue') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
                       </TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => handleSort('created')}
+                      >
+                        Created
+                        {getSortDirection('created') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection('created') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                      </TableHead>
                       <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoadingItems ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           Loading registry items...
                         </TableCell>
                       </TableRow>
                     ) : registryItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           No registry items found.
                         </TableCell>
                       </TableRow>
@@ -713,6 +730,17 @@ const RegistryPage = () => {
                               />
                             ) : (
                               item.description || '-'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editMode[item.id] ? (
+                              <Input
+                                value={editItems[item.id]?.created || ''}
+                                onChange={(e) => handleEditItemChange(item.id, 'created', e.target.value)}
+                                disabled // Prevent editing the created date
+                              />
+                            ) : (
+                              formatDate(item.created)
                             )}
                           </TableCell>
                           <TableCell className="text-right">

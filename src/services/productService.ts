@@ -30,6 +30,8 @@ export interface ProductVariantDTO {
   property2?: string;
   property3?: string;
   property4?: string;
+  hasPriceHistory?: boolean;
+  lastUpdated?: string;
 }
 
 export interface ProductCategoryDTO {
@@ -44,6 +46,7 @@ export interface ProductRegistryDTO {
   registryValue: string;
   description: string;
   enabled: boolean;
+  created?: string; // ISO date string from backend
 }
 
 export interface ProductSearchParams {
@@ -68,6 +71,18 @@ export interface ProductVariantFilterParams {
   page: number;
   pageSize: number;
   sort?: string;
+}
+
+export interface PriceHistoryDTO {
+  id: number;
+  variantId: number;
+  websiteCode: string;
+  websiteName: string;
+  price: number;
+  oldPrice: number | null;
+  discount: number | null;
+  priceString: string;
+  recordedAt: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -171,6 +186,16 @@ export const bulkImportProductRegistry = async (registries: Omit<ProductRegistry
   return response.data;
 };
 
+export const batchChangeType = async (ids: number[], targetType: string) => {
+  const requestBody = {
+    ids: ids,
+    targetType: targetType
+  };
+  
+  const response = await axios.post(`${API_URL}/product/registry/batch-change-type`, requestBody);
+  return response.data;
+};
+
 // Product Cleanup APIs
 export const runProductCleanup = async () => {
   const response = await axios.post(`${API_URL}/products/cleanup-manual`);
@@ -190,5 +215,11 @@ export const mergeDuplicates = async () => {
 // Product Brands
 export const getProductBrands = async () => {
   const response = await axios.get(`${API_URL}/products/brands-list`);
+  return response.data;
+};
+
+// Product Variant Price History
+export const getVariantPriceHistory = async (variantId: number): Promise<PriceHistoryDTO[]> => {
+  const response = await axios.get(`${API_URL}/products/variants/${variantId}/price-history`);
   return response.data;
 }; 

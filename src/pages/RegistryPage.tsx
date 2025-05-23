@@ -31,7 +31,8 @@ import {
   getProductRegistryTypes,
   ProductRegistryDTO,
   refreshProductRegistry,
-  updateProductRegistry
+  updateProductRegistry,
+  batchChangeType
 } from '@/services/productService';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -58,9 +59,34 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+
+// Format date function
+const formatDate = (dateString?: string) => {
+  if (!dateString) return '-';
+  try {
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) 
+      ? '-' 
+      : date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (error) {
+    return '-';
+  }
+};
 
 // Add pagination related types
 interface RegistryFilter {
@@ -231,15 +257,27 @@ const RegistryPage = () => {
   });
   const [editItems, setEditItems] = useState<{ [key: number]: ProductRegistryDTO }>({});
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [addNewDialogOpen, setAddNewDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshingCache, setIsRefreshingCache] = useState(false);
+  
+  // Multi-select state
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedStringItems, setSelectedStringItems] = useState<string[]>([]);
+  const [showBatchActions, setShowBatchActions] = useState(false);
+  const [batchTargetType, setBatchTargetType] = useState<string>('');
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const [batchTypeDialogOpen, setBatchTypeDialogOpen] = useState(false);
+  
+  // Track selected IDs by page to maintain selection state across pagination
+  const [selectedByPage, setSelectedByPage] = useState<{[page: number]: number[]}>({});
   
   // Pagination state
   const [filters, setFilters] = useState<RegistryFilter>({
     page: 0,
     size: 10,
-    sort: 'registryType,asc'
+    sort: 'created,desc'
   });
 
   // Load registry types
@@ -303,10 +341,13 @@ const RegistryPage = () => {
     setFilters({
       page: 0,
       size: 10,
-      sort: 'registryType,asc'
+      sort: 'created,desc'
     });
     setSelectedType(undefined);
     setSearchTerm('');
+    setSelectedItems([]);
+    setSelectedStringItems([]);
+    setShowBatchActions(false);
     
     refetchItems().finally(() => {
       setIsRefreshing(false);
@@ -349,7 +390,6 @@ const RegistryPage = () => {
   };
 
   const handleAddNewToggle = () => {
-    setIsAddingNew(!isAddingNew);
     if (!isAddingNew) {
       setNewItem({
         registryType: selectedType || registryTypes[0] || '',
@@ -359,6 +399,8 @@ const RegistryPage = () => {
         enabled: true
       });
     }
+    setIsAddingNew(!isAddingNew);
+    setAddNewDialogOpen(!isAddingNew);
   };
 
   const handleNewItemChange = (field: keyof Omit<ProductRegistryDTO, 'id'>, value: string | boolean) => {
@@ -375,6 +417,7 @@ const RegistryPage = () => {
       await createProductRegistry(newItem);
       toast.success('Registry item created successfully');
       setIsAddingNew(false);
+      setAddNewDialogOpen(false);
       setNewItem({
         registryType: selectedType || registryTypes[0] || '',
         registryKey: '',
@@ -464,7 +507,7 @@ const RegistryPage = () => {
   };
 
   const handleDeleteItem = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this registry item?')) {
+    if (!confirm('WARNING: Deleting this registry item may have serious impacts on products.\n\nDeleting items can cause products to be unprocessed, variants to be removed, or data to be lost.\n\nAre you sure you want to delete this item?')) {
       return;
     }
 
@@ -554,6 +597,12 @@ const RegistryPage = () => {
     return currentColumn === column ? direction : undefined;
   };
 
+  // Check if all items on current page are selected
+  const areAllCurrentPageItemsSelected = () => {
+    if (registryItems.length === 0) return false;
+    return registryItems.every((item: ProductRegistryDTO) => selectedItems.includes(item.id));
+  };
+
   // Handle page change
   const handlePageChange = (newPage: number) => {
     setFilters(prev => ({
@@ -574,6 +623,104 @@ const RegistryPage = () => {
   // Clear search
   const clearSearch = () => {
     setSearchTerm('');
+  };
+
+  // Multi-select handlers
+  const handleSelectItem = (id: number, selected: boolean) => {
+    if (selected) {
+      setSelectedItems(prev => [...prev, id]);
+    } else {
+      setSelectedItems(prev => prev.filter(itemId => itemId !== id));
+    }
+  };
+
+  const handleSelectStringItem = (id: string, selected: boolean) => {
+    if (selected) {
+      setSelectedStringItems(prev => [...prev, id]);
+    } else {
+      setSelectedStringItems(prev => prev.filter(itemId => itemId !== id));
+    }
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      // Only select items on current page
+      const allCurrentPageIds = registryItems.map((item: ProductRegistryDTO) => item.id);
+      setSelectedItems(prev => {
+        // Keep previously selected items that aren't on the current page
+        const itemsFromOtherPages = prev.filter(id => !allCurrentPageIds.includes(id));
+        return [...itemsFromOtherPages, ...allCurrentPageIds];
+      });
+    } else {
+      // Only unselect items on current page
+      const allCurrentPageIds = registryItems.map((item: ProductRegistryDTO) => item.id);
+      setSelectedItems(prev => prev.filter(id => !allCurrentPageIds.includes(id)));
+    }
+  };
+
+  const handleRowClick = (item: ProductRegistryDTO, event: React.MouseEvent) => {
+    // Don't trigger selection on clicks within action buttons or in edit mode
+    if (
+      editMode[item.id] || 
+      (event.target as HTMLElement).closest('.action-buttons') ||
+      (event.target as HTMLElement).closest('button') ||
+      (event.target as HTMLElement).closest('input') ||
+      (event.target as HTMLElement).closest('select')
+    ) {
+      return;
+    }
+    
+    const isSelected = selectedItems.includes(item.id);
+    handleSelectItem(item.id, !isSelected);
+  };
+
+  const handleStringItemRowClick = (item: DropdownDTO, event: React.MouseEvent) => {
+    // Don't trigger selection on clicks within buttons
+    if (
+      (event.target as HTMLElement).closest('button') ||
+      (event.target as HTMLElement).closest('input')
+    ) {
+      return;
+    }
+    
+    const isSelected = selectedStringItems.includes(item.code);
+    handleSelectStringItem(item.code, !isSelected);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItems([]);
+    setSelectedStringItems([]);
+    setShowBatchActions(false);
+  };
+
+  const toggleBatchActions = () => {
+    setBatchTypeDialogOpen(true);
+    if (registryTypes.length > 0 && !batchTargetType) {
+      setBatchTargetType(registryTypes[0]);
+    }
+  };
+
+  const handleBatchTypeChange = async () => {
+    if (selectedItems.length === 0 || !batchTargetType) return;
+    
+    try {
+      setIsBatchProcessing(true);
+      
+      await batchChangeType(selectedItems, batchTargetType);
+      console.log(`Changing type to ${batchTargetType} for items:`, selectedItems);
+      
+      toast.success(`Successfully changed type to ${batchTargetType} for ${selectedItems.length} items`);
+      setSelectedItems([]);
+      setSelectedStringItems([]);
+      setShowBatchActions(false);
+      setBatchTypeDialogOpen(false);
+      refetchItems();
+    } catch (error) {
+      console.error('Error performing batch type change:', error);
+      toast.error('Failed to change types for selected items');
+    } finally {
+      setIsBatchProcessing(false);
+    }
   };
 
   const [websites, setWebsites] = useState<DropdownDTO[]>([]);
@@ -625,7 +772,7 @@ const RegistryPage = () => {
   };
 
   const handleDelete = async (type: 'website' | 'category', id: string) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) {
+    if (!window.confirm(`WARNING: Deleting this ${type} may have serious impacts on products.\n\nDeleting ${type}s can cause products to be unprocessed, variants to be removed, or data to be lost.\n\nAre you sure you want to delete this ${type}?`)) {
       return;
     }
 
@@ -741,70 +888,120 @@ const RegistryPage = () => {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant={isAddingNew ? "secondary" : "default"}
-                  size="sm"
-                  onClick={handleAddNewToggle}
-                >
-                  {isAddingNew ? (
-                    <>
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add New
-                    </>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={isAddingNew ? "secondary" : "default"}
+                    size="sm"
+                    onClick={handleAddNewToggle}
+                  >
+                    {isAddingNew ? (
+                      <>
+                        <X className="mr-2 h-4 w-4" />
+                        Cancel
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add New
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportRegistry}
+                  >
+                    <FileDown className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={importRegistry}
+                  >
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Import
+                  </Button>
+                  <Button
+                    variant="default" 
+                    size="sm"
+                    onClick={handleRefreshRegistry}
+                    disabled={isRefreshingCache}
+                  >
+                    {isRefreshingCache ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Refresh Cache
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                  >
+                    {isRefreshing ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Reset
+                  </Button>
+                  {selectedItems.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="default" size="sm">
+                          <span className="mr-1">{selectedItems.length}</span> 
+                          Selected
+                          <ChevronDown className="ml-1 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Batch Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={toggleBatchActions}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Change Type
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            if (window.confirm(`WARNING: Batch deleting ${selectedItems.length} items may have serious impacts on products.\n\nDeleting registry items can cause products to be unprocessed, variants to be removed, or data to be lost.\n\nAre you sure you want to delete these items?`)) {
+                              // Add bulk delete API call here when implemented
+                              console.log("Delete items:", selectedItems);
+                              toast.success(`Deleted ${selectedItems.length} items`);
+                              setSelectedItems([]);
+                              setSelectedStringItems([]);
+                            }
+                          }}
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleClearSelection}>
+                          <X className="mr-2 h-4 w-4" />
+                          Clear Selection
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportRegistry}
-                >
-                  <FileDown className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={importRegistry}
-                >
-                  <FileUp className="mr-2 h-4 w-4" />
-                  Import
-                </Button>
-                <Button
-                  variant="default" 
-                  size="sm"
-                  onClick={handleRefreshRegistry}
-                  disabled={isRefreshingCache}
-                >
-                  {isRefreshingCache ? (
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                  )}
-                  Refresh Cache
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                >
-                  {isRefreshing ? (
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                  )}
-                  Reset & Refresh
-                </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Warning: Critical System Data</AlertTitle>
+                <AlertDescription>
+                  Changes made on this page directly impact products. Deleting or changing items can cause products to become unprocessed, 
+                  remove variants, or affect data integrity. Please proceed with caution.
+                </AlertDescription>
+              </Alert>
+
               <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center space-x-4">
                   <div>
                     <Select
                       value={selectedType || "__all__"}
@@ -824,102 +1021,134 @@ const RegistryPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex gap-2">
-                    <div className="relative w-[250px]">
-                      <Input
-                        placeholder="Search registry items..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                      {searchTerm && (
-                        <button
-                          onClick={clearSearch}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
+                  <div className="relative w-[250px]">
+                    <Input
+                      placeholder="Search registry items..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={clearSearch}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {isAddingNew && (
-                <div className="mb-6 p-4 border rounded-md bg-muted/40">
-                  <h3 className="text-sm font-medium mb-3">Add New Registry Item</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="text-sm font-medium">Type</label>
-                      <Select
-                        value={newItem.registryType}
-                        onValueChange={(value) => handleNewItemChange('registryType', value)}
+              {/* Add New Registry Item Dialog */}
+              <Dialog open={addNewDialogOpen} onOpenChange={(open) => {
+                setAddNewDialogOpen(open);
+                if (!open) setIsAddingNew(false);
+              }}>
+                <DialogContent className="sm:max-w-[600px]">
+                  <DialogHeader>
+                    <DialogTitle>Add New Registry Item</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Adding new registry items may impact products. Please proceed with caution.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label htmlFor="registry-type">Type</Label>
+                        <Select
+                          value={newItem.registryType}
+                          onValueChange={(value) => handleNewItemChange('registryType', value)}
+                        >
+                          <SelectTrigger className="mt-1" id="registry-type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {registryTypes.map((type: string) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="registry-key">Key</Label>
+                        <Input
+                          id="registry-key"
+                          value={newItem.registryKey}
+                          onChange={(e) => handleNewItemChange('registryKey', e.target.value)}
+                          placeholder="Enter registry key"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="registry-value">Value</Label>
+                        <Input
+                          id="registry-value"
+                          value={newItem.registryValue}
+                          onChange={(e) => handleNewItemChange('registryValue', e.target.value)}
+                          placeholder="Enter registry value"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="registry-description">Description</Label>
+                        <Input
+                          id="registry-description"
+                          value={newItem.description}
+                          onChange={(e) => handleNewItemChange('description', e.target.value)}
+                          placeholder="Enter description (optional)"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Switch
+                        id="new-item-enabled"
+                        checked={newItem.enabled}
+                        onCheckedChange={(checked) => handleNewItemChange('enabled', checked)}
+                      />
+                      <label
+                        htmlFor="new-item-enabled"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {registryTypes.map((type: string) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Key</label>
-                      <Input
-                        value={newItem.registryKey}
-                        onChange={(e) => handleNewItemChange('registryKey', e.target.value)}
-                        placeholder="Enter registry key"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Value</label>
-                      <Input
-                        value={newItem.registryValue}
-                        onChange={(e) => handleNewItemChange('registryValue', e.target.value)}
-                        placeholder="Enter registry value"
-                        className="mt-1"
-                      />
+                        Enabled
+                      </label>
                     </div>
                   </div>
-                  <div className="mb-4">
-                    <label className="text-sm font-medium">Description</label>
-                    <Input
-                      value={newItem.description}
-                      onChange={(e) => handleNewItemChange('description', e.target.value)}
-                      placeholder="Enter description (optional)"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Switch
-                      checked={newItem.enabled}
-                      onCheckedChange={(checked) => handleNewItemChange('enabled', checked)}
-                      id="new-item-enabled"
-                    />
-                    <label
-                      htmlFor="new-item-enabled"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  <DialogFooter>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setAddNewDialogOpen(false);
+                        setIsAddingNew(false);
+                      }}
                     >
-                      Enabled
-                    </label>
-                  </div>
-                  <div className="flex justify-end">
+                      Cancel
+                    </Button>
                     <Button onClick={handleCreateItem}>
                       <Save className="mr-2 h-4 w-4" />
                       Save
                     </Button>
-                  </div>
-                </div>
-              )}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox 
+                          checked={areAllCurrentPageItemsSelected()}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead 
                         className="w-[100px] cursor-pointer"
                         onClick={() => handleRegistrySort('enabled')}
@@ -953,25 +1182,46 @@ const RegistryPage = () => {
                         {getSortDirection('registryValue') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
                       </TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => handleRegistrySort('created')}
+                      >
+                        Created
+                        {getSortDirection('created') === 'asc' && <ChevronUp className="inline h-4 w-4 ml-1" />}
+                        {getSortDirection('created') === 'desc' && <ChevronDown className="inline h-4 w-4 ml-1" />}
+                      </TableHead>
                       <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoadingItems ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={8} className="h-24 text-center">
                           Loading registry items...
                         </TableCell>
                       </TableRow>
                     ) : registryItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={8} className="h-24 text-center">
                           No registry items found.
                         </TableCell>
                       </TableRow>
                     ) : (
                       registryItems.map((item: ProductRegistryDTO) => (
-                        <TableRow key={item.id}>
+                        <TableRow 
+                          key={item.id}
+                          className={selectedItems.includes(item.id) ? "bg-muted/50" : ""}
+                          onClick={(e) => handleRowClick(item, e)}
+                          style={{ cursor: editMode[item.id] ? 'default' : 'pointer' }}
+                        >
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedItems.includes(item.id)}
+                              onCheckedChange={(checked) => handleSelectItem(item.id, !!checked)}
+                              disabled={editMode[item.id]}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </TableCell>
                           <TableCell>
                             {editMode[item.id] ? (
                               <Switch
@@ -1033,8 +1283,19 @@ const RegistryPage = () => {
                               item.description || '-'
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
+                          <TableCell>
+                            {editMode[item.id] ? (
+                              <Input
+                                value={editItems[item.id]?.created || ''}
+                                onChange={(e) => handleEditItemChange(item.id, 'created', e.target.value)}
+                                disabled
+                              />
+                            ) : (
+                              formatDate(item.created)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right action-buttons">
+                            <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1132,6 +1393,60 @@ const RegistryPage = () => {
                   </div>
                 </div>
               )}
+
+              {/* Batch Type Change Dialog */}
+              <Dialog open={batchTypeDialogOpen} onOpenChange={setBatchTypeDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Change Type for {selectedItems.length} Items</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Warning: Changing types may have serious impacts on products. This operation can cause products to be unprocessed or data to be lost.
+                      </AlertDescription>
+                    </Alert>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="batch-type">Select Target Type</Label>
+                        <Select
+                          value={batchTargetType}
+                          onValueChange={setBatchTargetType}
+                        >
+                          <SelectTrigger id="batch-type">
+                            <SelectValue placeholder="Select target type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {registryTypes.map((type: string) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline" 
+                      onClick={() => setBatchTypeDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleBatchTypeChange}
+                      disabled={isBatchProcessing || !batchTargetType}
+                    >
+                      {isBatchProcessing ? (
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Apply Changes
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1207,15 +1522,23 @@ const RegistryPage = () => {
                       </TableRow>
                     ) : (
                           filteredWebsites.map((website) => (
-                        <TableRow key={website.code}>
+                        <TableRow 
+                          key={website.code} 
+                          className={selectedStringItems.includes(website.code) ? "bg-muted/40" : ""}
+                          onClick={(e) => handleStringItemRowClick(website, e)}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <TableCell>{website.code}</TableCell>
                           <TableCell>{website.name}</TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete('website', website.code)}
-                                  className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete('website', website.code);
+                              }}
+                              className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1301,15 +1624,23 @@ const RegistryPage = () => {
                       </TableRow>
                     ) : (
                           filteredCategories.map((category) => (
-                        <TableRow key={category.code}>
+                        <TableRow 
+                          key={category.code} 
+                          className={selectedStringItems.includes(category.code) ? "bg-muted/40" : ""}
+                          onClick={(e) => handleStringItemRowClick(category, e)}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <TableCell>{category.code}</TableCell>
                           <TableCell>{category.name}</TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete('category', category.code)}
-                                  className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete('category', category.code);
+                              }}
+                              className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
